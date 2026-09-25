@@ -1,115 +1,289 @@
 # Career Dispatch
 
-A local-first job discovery and personalized application desk. It finds relevant full-time roles from public job-board APIs, scores them, creates a role-specific ATS resume and cover letter, and sends reviewed applications through your SMTP account.
+[![Security and build](https://github.com/Birukfm/career-dispatch/actions/workflows/security.yml/badge.svg)](https://github.com/Birukfm/career-dispatch/actions/workflows/security.yml)
+[![CodeQL](https://github.com/Birukfm/career-dispatch/actions/workflows/codeql.yml/badge.svg)](https://github.com/Birukfm/career-dispatch/actions/workflows/codeql.yml)
 
-## What it does
+A local-first workspace for discovering relevant jobs, cleaning up application documents, reviewing personalized application packages, and sending deliberate one-to-one outreach.
 
-- Discovers relevant roles from Remote OK, Arbeitnow, Remotive, and Jobicy public APIs.
-- Classifies communications, virtual assistance, design, customer support, prompt engineering, web development, and application development roles.
-- Scores remote, worldwide, full-time, and publicly contactable opportunities.
-- Generates a tailored email, ATS resume, and cover letter for each role.
-- Sends only to recruiting addresses explicitly included in a public job post.
-- Stores jobs and outreach history in an atomic local JSON data store.
-- Enforces one-to-one review, deduplication, spacing, and daily/weekly limits.
-- Tracks sent and replied status without covert tracking pixels.
+Career Dispatch is designed to help applicants organize a serious job search without turning it into indiscriminate email automation. Every application requires review, every claim comes from the candidate's profile, and messages can only be sent to recruiting addresses explicitly published in a job listing.
 
-## Setup
+## Highlights
 
-1. Install dependencies:
+- Searches four permitted public job APIs without scraping protected websites.
+- Scores roles using discipline, experience, location, employment type, and resume skills.
+- Accepts PDF, DOCX, and TXT resumes for transient local skill extraction.
+- Includes full-time, internship, graduate, junior, and apprenticeship targeting.
+- Generates editable ATS resumes, cover letters, and application emails.
+- Provides three resume templates and three cover-letter templates.
+- Tracks discovered, shortlisted, drafted, sent, replied, and archived opportunities.
+- Sends reviewed applications through Gmail, Microsoft 365, or custom SMTP.
+- Enforces duplicate prevention, daily and weekly limits, and minimum send delays.
+- Stores profiles, credentials, jobs, and settings locally rather than in a hosted database.
 
-   ```bash
-   npm install
-   ```
+## Product principles
 
-2. Copy `.env.example` to `.env.local`. Email and AI credentials can then be added from the local Configuration page.
+### Cleanup, not invention
 
-3. Copy `data/profile.example.json` to `data/profile.json` and replace every placeholder. Accurate dates, verifiable achievements, education, portfolio links, and contact information are essential. The personal profile is ignored by Git.
+Document tailoring improves structure, wording, emphasis, and ATS readability. It does not invent credentials, metrics, responsibilities, employers, education, or achievements. Every generated document remains editable before use.
 
-4. Start the app:
+### Review before sending
 
-   ```bash
-   npm run dev
-   ```
+Career Dispatch does not provide an unattended bulk-send mode. The recipient and generated documents must be reviewed before each application can be sent.
 
-5. Open `http://localhost:3000`, select **Discover roles**, and review every application package before sending.
+### Public contact information only
 
-## Email provider examples
+Email sending is restricted to a recruiting address explicitly found near application instructions in a public job post. The application does not guess addresses, harvest personal contact details, or purchase lists.
+
+## Job sources
+
+Career Dispatch currently uses public APIs from:
+
+- [Remote OK](https://remoteok.com)
+- [Arbeitnow](https://www.arbeitnow.com)
+- [Remotive](https://remotive.com)
+- [Jobicy](https://jobicy.com)
+
+LinkedIn, Indeed, Wellfound, and similar protected platforms are not scraped.
+
+## Application flow
+
+```mermaid
+flowchart LR
+    A[Candidate profile or uploaded resume] --> B[Skill extraction]
+    B --> C[Public job APIs]
+    C --> D[Relevance scoring and filters]
+    D --> E[Shortlist and review]
+    E --> F[Editable resume and cover letter]
+    F --> G{Public recruiting email?}
+    G -- Yes --> H[Reviewed SMTP send]
+    G -- No --> I[Open original application page]
+    H --> J[Local outreach tracking]
+```
+
+## Quick start
+
+### Requirements
+
+- Node.js 20 or newer
+- npm
+- An email account with SMTP access if you want to send applications
+
+### Installation
+
+```bash
+git clone https://github.com/Birukfm/career-dispatch.git
+cd career-dispatch
+npm install
+cp .env.example .env.local
+cp data/profile.example.json data/profile.json
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+### Add your profile
+
+Edit `data/profile.json` with accurate information:
+
+- Contact details and professional links
+- Professional summary
+- Verified skills
+- Employment history and dates
+- Factual achievements
+- Education and certifications
+
+`data/profile.json` is ignored by Git. The committed `data/profile.example.json` contains placeholders only.
+
+## Dashboard
+
+The main dashboard provides:
+
+- Opportunity counts and weekly send progress
+- Resume-aware discovery
+- Discipline, location, experience, and employment filters
+- Search, fit scoring, and application statuses
+- Original job links
+- Tailored application previews
+- Manual review confirmation before sending
+
+Uploaded resumes are parsed in memory and are not written to disk.
+
+## Documents workspace
+
+The `/documents` page contains separate editable sections for resumes and cover letters.
+
+### Resume templates
+
+1. **Classic ATS** — conventional single-column layout for application portals.
+2. **Technical Focus** — emphasizes products, implementation skills, and technical experience.
+3. **Compact Professional** — concise format for support, communications, and operational roles.
+
+### Cover-letter templates
+
+1. **Direct Professional** — traditional role-to-experience structure.
+2. **Product Story** — concise ownership and delivery narrative.
+3. **Concise Value** — short format for recruiter outreach.
+
+Templates support live editing, previewing, copying, and text download.
+
+## Email configuration
+
+Open `/settings` and choose an email provider.
 
 ### Gmail
 
-```env
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=your-address@gmail.com
-SMTP_PASSWORD=your-application-password
-SMTP_FROM_EMAIL=your-address@gmail.com
-```
+1. Enable Google 2-Step Verification.
+2. Open [Google App Passwords](https://myaccount.google.com/apppasswords).
+3. Create an app password named `Career Dispatch`.
+4. Enter your address, sender name, and generated app password.
 
-### Microsoft 365
+Do not enter your normal Google account password.
 
-```env
-SMTP_HOST=smtp.office365.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=your-address@example.com
-SMTP_PASSWORD=your-password
-SMTP_FROM_EMAIL=your-address@example.com
-```
+### Microsoft 365 or Outlook
 
-Provider policies vary. New accounts should start below the configured limits and increase only when delivery and response quality are healthy.
+Personal Outlook accounts may expose app passwords under Microsoft Advanced security options.
 
-Microsoft accounts that disable app passwords or Authenticated SMTP require OAuth and cannot use password-based SMTP.
+For Microsoft 365 work or school mailboxes, an administrator must enable **Authenticated SMTP** under:
 
-## Security
+`Users → Active users → User → Mail → Manage email apps`
 
-Career Dispatch is local-first. Personal profiles, generated PDFs, email credentials, AI keys, outreach history, and local settings are excluded from Git.
+Microsoft accounts that disable app passwords or Authenticated SMTP require OAuth and cannot use the current password-based mailer.
 
-All API routes and the Documents and Configuration pages are limited to localhost by default. Before exposing the application on a network or deployment, set a long random access token:
+### Custom SMTP
 
-```env
-CAREER_DISPATCH_ACCESS_TOKEN=replace-with-a-long-random-value
-```
+Enter the SMTP host, port, TLS preference, mailbox username, password, sender name, and sender address supplied by your provider.
 
-Generate one with:
+Environment variables remain available as a fallback; see `.env.example`.
 
-```bash
-openssl rand -hex 32
-```
+## AI configuration
 
-Remote browsers will request HTTP Basic authentication; use any username and the access token as the password. API clients may alternatively send `Authorization: Bearer <token>`.
+The Configuration page can locally store:
 
-The application also sets CSP, clickjacking, MIME-sniffing, referrer, permissions, and HTTPS transport headers. This repository contains no hosted multi-user authentication system and should not be deployed publicly without the access token.
+- Provider
+- Provider-specific model identifier
+- Optional custom compatible endpoint
+- API key
+
+Supported configuration presets include OpenAI, Anthropic, Google Gemini, and OpenRouter.
+
+**Current status:** AI credentials are configuration-only. The current release uses deterministic resume analysis and document templates and does not yet send requests to an AI provider.
 
 ## Read receipts
 
-The default is `REQUEST_READ_RECEIPTS=false`. Career Dispatch deliberately does not add a hidden tracking pixel.
+Hidden tracking pixels are deliberately excluded.
 
-To request a standards-based receipt:
+Standards-based receipt requests can be enabled in `.env.local`:
 
 ```env
 REQUEST_READ_RECEIPTS=true
 ```
 
-This adds `Disposition-Notification-To` and `Return-Receipt-To` headers. The recipient's email client may ask for consent, ignore the request, or block it. A receipt is not proof that a person meaningfully read the message. For dependable tracking, use the dashboard's sent status and mark genuine replies as replied.
+This adds `Disposition-Notification-To` and `Return-Receipt-To` headers. Recipients may decline or ignore them, and a receipt does not prove meaningful engagement.
 
-## Weekly workflow
+## Safety limits
 
-The configured ceiling is 100 applications per week and 20 per day, with at least 90 seconds between messages. These are ceilings, not targets. Sending fewer well-matched applications generally protects deliverability and produces better results.
+Defaults are configurable in `.env.local`:
 
-1. Discover roles at the beginning of each workday.
-2. Shortlist strong matches.
-3. Open **Prepare**, correct any generated claim that is not true, and follow the original application instructions.
-4. Send only where the post publicly supplies a recruiting email. Otherwise, use the original listing link.
-5. Mark responses in the dashboard.
+```env
+WEEKLY_SEND_LIMIT=100
+DAILY_SEND_LIMIT=20
+MINIMUM_SEND_DELAY_SECONDS=90
+```
+
+These values are ceilings, not recommended targets. Fewer well-matched applications generally produce better results and protect sender reputation.
+
+## Privacy and security
+
+Career Dispatch is local-first. The following are excluded from Git:
+
+- `.env` files
+- Candidate profiles
+- Email credentials
+- AI API keys
+- Local job and outreach history
+- Generated PDFs and resume source files
+- Private keys and certificates
+
+Credential files are written with restricted local permissions. Public API responses return configuration status and masked hints, never complete stored credentials.
+
+### Remote access
+
+All API routes and the Documents and Configuration pages are limited to localhost by default.
+
+Before exposing the application beyond localhost, generate an access token:
+
+```bash
+openssl rand -hex 32
+```
+
+Add it to `.env.local`:
+
+```env
+CAREER_DISPATCH_ACCESS_TOKEN=your-generated-token
+```
+
+Remote browsers use HTTP Basic authentication. Any username is accepted; the access token is the password. API clients may send:
+
+```http
+Authorization: Bearer your-generated-token
+```
+
+Security headers include CSP, frame protection, MIME-sniffing protection, restrictive referrer and permissions policies, and HSTS for remote production traffic.
+
+This is not a hosted multi-user authentication system. Do not deploy it publicly without the access token and appropriate network controls.
+
+## Local data
+
+Runtime data is stored as atomic JSON files under `data/`:
+
+- Candidate profile
+- Job queue
+- Outreach history
+- Email settings
+- AI settings
+
+The application is intended for one local user. Concurrent multi-user writes and cloud synchronization are outside the current design.
+
+## Project structure
+
+```text
+src/
+├── app/
+│   ├── api/             # Discovery, documents, settings, and sending routes
+│   ├── documents/       # Editable document studio
+│   └── settings/        # Email and AI configuration
+├── components/          # Dashboard and configuration interfaces
+├── lib/                 # Sources, templates, storage, mailer, and security data access
+└── proxy.ts             # Remote-access controls and security headers
+data/
+└── profile.example.json # Public-safe profile schema
+```
+
+## Commands
+
+```bash
+npm run dev        # Start the local development server
+npm run typecheck  # Check TypeScript
+npm run build      # Create a production build
+npm start          # Run the production build
+npm audit          # Check dependencies for known vulnerabilities
+```
 
 ## Responsible use
 
-Respect each site's terms, robots policy, privacy law, anti-spam law, and the job post's application instructions. Do not guess addresses, harvest personal contact details, buy lists, bypass site controls, or send duplicate applications. The included sources expose public APIs; add another source only when its terms permit automated access.
+You are responsible for complying with:
 
-## Verification
+- Job-board terms and application instructions
+- Email provider policies
+- Privacy and anti-spam laws
+- Employer communication preferences
+- Accuracy of all submitted documents
 
-```bash
-npm run typecheck
-npm run build
-```
+Do not use Career Dispatch to harvest contacts, guess addresses, bypass site controls, send deceptive claims, or distribute duplicate unsolicited messages.
+
+## Security and contributing
+
+- Review [SECURITY.md](SECURITY.md) before reporting a vulnerability.
+- Do not place credentials or personal resumes in issues, pull requests, fixtures, or screenshots.
+- Run type checking, the production build, and `npm audit` before opening a pull request.
+- GitHub Actions, CodeQL, Dependabot, secret scanning, and push protection are enabled for this repository.
