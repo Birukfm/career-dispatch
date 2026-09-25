@@ -1,0 +1,42 @@
+{
+  "fullName": "Your Name",
+  "professionalTitle": "Your Professional Title",
+  "email": "you@example.com",
+  "phone": "",
+  "location": "Your location and work preference",
+  "portfolioUrl": "",
+  "linkedInUrl": "",
+  "summary": "Write a factual professional summary based only on your experience.",
+  "skills": [
+    "Your verified skill"
+  ],
+  "achievements": [
+    "A truthful, specific achievement without invented metrics."
+  ],
+  "experience": [
+    {
+      "company": "Company name",
+      "title": "Job title",
+      "startDate": "Month Year",
+      "endDate": "Present",
+      "highlights": [
+        "A responsibility or result you can verify."
+      ]
+    }
+  ],
+  "education": [
+    {
+      "institution": "Institution name",
+      "qualification": "Qualification",
+      "year": "Year"
+    }
+  ],
+  "certifications": [
+    {
+      "name": "Certification name",
+      "issuer": "Issuer",
+      "platform": "Platform",
+      "completedAt": ""
+    }
+  ]
+}
