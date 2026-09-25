@@ -42,8 +42,25 @@ Career Dispatch currently uses public APIs from:
 - [Arbeitnow](https://www.arbeitnow.com)
 - [Remotive](https://remotive.com)
 - [Jobicy](https://jobicy.com)
+- [Greenhouse Job Board API](https://developers.greenhouse.io/job-board.html)
+- [Lever Postings API](https://github.com/lever/postings-api)
+- [Ashby Job Postings API](https://developers.ashbyhq.com/docs/public-job-posting-api)
+- [Workable public careers API](https://workable.readme.io/reference/jobs-1)
 
 LinkedIn, Indeed, Wellfound, and similar protected platforms are not scraped.
+
+### Configure public ATS boards
+
+Greenhouse, Lever, Ashby, and Workable expose company-specific public boards rather than global catalogs. Configure the employers you want to monitor with comma-separated identifiers:
+
+```dotenv
+GREENHOUSE_BOARD_TOKENS=greenhouse
+LEVER_SITE_NAMES=spotify
+ASHBY_JOB_BOARD_NAMES=Ashby
+WORKABLE_ACCOUNT_SUBDOMAINS=epignosis
+```
+
+The identifier is the company segment in its hosted careers URL. For example, `jobs.lever.co/spotify` uses `spotify`. The included values are verified starter boards; replace them with target employers, or set a variable to an empty value to disable that provider. Career Dispatch limits each provider to 20 configured boards, caches responses for one hour, and continues discovery if one board is unavailable.
 
 ## Application flow
 

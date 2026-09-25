@@ -36,6 +36,11 @@ const excludedTitleKeywords: readonly string[] = [
 ];
 
 const emailPattern: RegExp = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i;
+const requestHeaders: Readonly<Record<string, string>> = { "User-Agent": "CareerDispatch/1.0 (personal job search)" };
+const defaultGreenhouseBoardTokens: readonly string[] = ["greenhouse"];
+const defaultLeverSiteNames: readonly string[] = ["spotify"];
+const defaultAshbyBoardNames: readonly string[] = ["Ashby"];
+const defaultWorkableSubdomains: readonly string[] = ["epignosis"];
 
 interface RemoteOkItem {
   id?: string | number;
@@ -97,12 +102,93 @@ interface JobicyResponse {
   jobs: JobicyItem[];
 }
 
+interface GreenhouseItem {
+  id: number;
+  absolute_url: string;
+  title: string;
+  company_name?: string;
+  location?: { name?: string };
+  content?: string;
+  first_published?: string;
+  updated_at?: string;
+  departments?: Array<{ name?: string }>;
+  offices?: Array<{ name?: string }>;
+}
+
+interface GreenhouseResponse {
+  jobs: GreenhouseItem[];
+}
+
+interface LeverItem {
+  id: string;
+  text: string;
+  hostedUrl: string;
+  descriptionPlain?: string;
+  additionalPlain?: string;
+  createdAt?: number;
+  workplaceType?: string;
+  categories?: {
+    location?: string;
+    allLocations?: string[];
+    team?: string;
+    department?: string;
+    commitment?: string;
+  };
+}
+
+interface AshbyItem {
+  id: string;
+  title: string;
+  department?: string;
+  team?: string;
+  employmentType?: string;
+  location?: string;
+  publishedAt?: string;
+  isListed?: boolean;
+  isRemote?: boolean;
+  workplaceType?: string;
+  jobUrl: string;
+  descriptionPlain?: string;
+  descriptionHtml?: string;
+}
+
+interface AshbyResponse {
+  jobs: AshbyItem[];
+}
+
+interface WorkableItem {
+  title: string;
+  shortcode: string;
+  employment_type?: string;
+  telecommuting?: boolean;
+  department?: string;
+  url: string;
+  published_on?: string;
+  created_at?: string;
+  country?: string;
+  city?: string;
+  state?: string;
+  experience?: string;
+  function?: string;
+  industry?: string;
+  description?: string;
+}
+
+interface WorkableResponse {
+  name: string;
+  jobs: WorkableItem[];
+}
+
 export async function discoverJobs(resumeKeywords: string[] = []): Promise<Job[]> {
   const results: PromiseSettledResult<Job[]>[] = await Promise.allSettled([
     fetchRemoteOkJobs(resumeKeywords),
     fetchArbeitnowJobs(resumeKeywords),
     fetchRemotiveJobs(resumeKeywords),
     fetchJobicyJobs(resumeKeywords),
+    fetchGreenhouseJobs(resumeKeywords),
+    fetchLeverJobs(resumeKeywords),
+    fetchAshbyJobs(resumeKeywords),
+    fetchWorkableJobs(resumeKeywords),
   ]);
   return results.flatMap((result: PromiseSettledResult<Job[]>): Job[] => result.status === "fulfilled" ? result.value : []);
 }
@@ -199,6 +285,143 @@ async function fetchJobicyJobs(resumeKeywords: string[]): Promise<Job[]> {
   }));
 }
 
+async function fetchGreenhouseJobs(resumeKeywords: string[]): Promise<Job[]> {
+  const boardTokens: string[] = getBoardIdentifiers("GREENHOUSE_BOARD_TOKENS", defaultGreenhouseBoardTokens);
+  return fetchConfiguredBoards(boardTokens, (boardToken: string): Promise<Job[]> => fetchGreenhouseBoard(boardToken, resumeKeywords));
+}
+
+async function fetchGreenhouseBoard(boardToken: string, resumeKeywords: string[]): Promise<Job[]> {
+  const response: Response = await fetch(`https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(boardToken)}/jobs?content=true`, { headers: requestHeaders, next: { revalidate: 3600 } });
+  if (!response.ok) {
+    throw new Error(`Greenhouse board ${boardToken} returned ${response.status}`);
+  }
+  const payload: GreenhouseResponse = await response.json() as GreenhouseResponse;
+  return payload.jobs.filter((item: GreenhouseItem): boolean => isRelevantRole(item.title, getGreenhouseTags(item), resumeKeywords)).map((item: GreenhouseItem): Job => createJob({
+    source: "Greenhouse",
+    sourceId: String(item.id),
+    sourceUrl: item.absolute_url,
+    title: item.title,
+    company: item.company_name || formatBoardName(boardToken),
+    location: item.location?.name || "Location not specified",
+    description: stripHtml(item.content ?? ""),
+    publishedAt: item.first_published || item.updated_at || new Date().toISOString(),
+    tags: getGreenhouseTags(item),
+    resumeKeywords,
+  }));
+}
+
+async function fetchLeverJobs(resumeKeywords: string[]): Promise<Job[]> {
+  const siteNames: string[] = getBoardIdentifiers("LEVER_SITE_NAMES", defaultLeverSiteNames);
+  return fetchConfiguredBoards(siteNames, (siteName: string): Promise<Job[]> => fetchLeverBoard(siteName, resumeKeywords));
+}
+
+async function fetchLeverBoard(siteName: string, resumeKeywords: string[]): Promise<Job[]> {
+  const response: Response = await fetch(`https://api.lever.co/v0/postings/${encodeURIComponent(siteName)}?mode=json`, { headers: requestHeaders, next: { revalidate: 3600 } });
+  if (!response.ok) {
+    throw new Error(`Lever site ${siteName} returned ${response.status}`);
+  }
+  const items: LeverItem[] = await response.json() as LeverItem[];
+  return items.filter((item: LeverItem): boolean => isRelevantRole(item.text, getLeverTags(item), resumeKeywords)).map((item: LeverItem): Job => createJob({
+    source: "Lever",
+    sourceId: item.id,
+    sourceUrl: item.hostedUrl,
+    title: item.text,
+    company: formatBoardName(siteName),
+    location: item.categories?.location || item.categories?.allLocations?.join(", ") || item.workplaceType || "Location not specified",
+    description: [item.descriptionPlain, item.additionalPlain].filter(isNonEmptyString).join(" "),
+    publishedAt: item.createdAt ? new Date(item.createdAt).toISOString() : new Date().toISOString(),
+    tags: getLeverTags(item),
+    resumeKeywords,
+  }));
+}
+
+async function fetchAshbyJobs(resumeKeywords: string[]): Promise<Job[]> {
+  const boardNames: string[] = getBoardIdentifiers("ASHBY_JOB_BOARD_NAMES", defaultAshbyBoardNames);
+  return fetchConfiguredBoards(boardNames, (boardName: string): Promise<Job[]> => fetchAshbyBoard(boardName, resumeKeywords));
+}
+
+async function fetchAshbyBoard(boardName: string, resumeKeywords: string[]): Promise<Job[]> {
+  const response: Response = await fetch(`https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(boardName)}`, { headers: requestHeaders, next: { revalidate: 3600 } });
+  if (!response.ok) {
+    throw new Error(`Ashby board ${boardName} returned ${response.status}`);
+  }
+  const payload: AshbyResponse = await response.json() as AshbyResponse;
+  return payload.jobs.filter((item: AshbyItem): boolean => item.isListed !== false && isRelevantRole(item.title, getAshbyTags(item), resumeKeywords)).map((item: AshbyItem): Job => createJob({
+    source: "Ashby",
+    sourceId: item.id,
+    sourceUrl: item.jobUrl,
+    title: item.title,
+    company: formatBoardName(boardName),
+    location: item.location || (item.isRemote ? "Remote" : "Location not specified"),
+    description: item.descriptionPlain || stripHtml(item.descriptionHtml ?? ""),
+    publishedAt: item.publishedAt || new Date().toISOString(),
+    tags: getAshbyTags(item),
+    resumeKeywords,
+  }));
+}
+
+async function fetchWorkableJobs(resumeKeywords: string[]): Promise<Job[]> {
+  const subdomains: string[] = getBoardIdentifiers("WORKABLE_ACCOUNT_SUBDOMAINS", defaultWorkableSubdomains);
+  return fetchConfiguredBoards(subdomains, (subdomain: string): Promise<Job[]> => fetchWorkableBoard(subdomain, resumeKeywords));
+}
+
+async function fetchWorkableBoard(subdomain: string, resumeKeywords: string[]): Promise<Job[]> {
+  const response: Response = await fetch(`https://www.workable.com/api/accounts/${encodeURIComponent(subdomain)}?details=true`, { headers: requestHeaders, next: { revalidate: 3600 } });
+  if (!response.ok) {
+    throw new Error(`Workable account ${subdomain} returned ${response.status}`);
+  }
+  const payload: WorkableResponse = await response.json() as WorkableResponse;
+  return payload.jobs.filter((item: WorkableItem): boolean => isRelevantRole(item.title, getWorkableTags(item), resumeKeywords)).map((item: WorkableItem): Job => createJob({
+    source: "Workable",
+    sourceId: item.shortcode,
+    sourceUrl: item.url,
+    title: item.title,
+    company: payload.name || formatBoardName(subdomain),
+    location: [item.city, item.state, item.country].filter(isNonEmptyString).join(", ") || (item.telecommuting ? "Remote" : "Location not specified"),
+    description: stripHtml(item.description ?? ""),
+    publishedAt: item.published_on || item.created_at || new Date().toISOString(),
+    tags: getWorkableTags(item),
+    resumeKeywords,
+  }));
+}
+
+async function fetchConfiguredBoards(boardIdentifiers: string[], fetchBoard: (boardIdentifier: string) => Promise<Job[]>): Promise<Job[]> {
+  const results: PromiseSettledResult<Job[]>[] = await Promise.allSettled(boardIdentifiers.map(fetchBoard));
+  return results.flatMap((result: PromiseSettledResult<Job[]>): Job[] => result.status === "fulfilled" ? result.value : []);
+}
+
+function getBoardIdentifiers(environmentVariable: string, defaults: readonly string[]): string[] {
+  const configuredValue: string | undefined = process.env[environmentVariable];
+  if (configuredValue === undefined) {
+    return [...defaults];
+  }
+  return configuredValue.split(",").map((value: string): string => value.trim()).filter(Boolean).slice(0, 20);
+}
+
+function getGreenhouseTags(item: GreenhouseItem): string[] {
+  return [...(item.departments ?? []).map((department: { name?: string }): string => department.name ?? ""), ...(item.offices ?? []).map((office: { name?: string }): string => office.name ?? "")].filter(isNonEmptyString);
+}
+
+function getLeverTags(item: LeverItem): string[] {
+  return [item.categories?.team, item.categories?.department, item.categories?.commitment, item.workplaceType].filter(isNonEmptyString);
+}
+
+function getAshbyTags(item: AshbyItem): string[] {
+  return [item.department, item.team, item.employmentType, item.workplaceType, item.isRemote ? "remote" : ""].filter(isNonEmptyString);
+}
+
+function getWorkableTags(item: WorkableItem): string[] {
+  return [item.department, item.employment_type, item.experience, item.function, item.industry, item.telecommuting ? "remote" : ""].filter(isNonEmptyString);
+}
+
+function isNonEmptyString(value: string | undefined): value is string {
+  return Boolean(value);
+}
+
+function formatBoardName(value: string): string {
+  return value.replace(/[-_]+/g, " ").replace(/\b\w/g, (character: string): string => character.toUpperCase());
+}
+
 function isRelevantRemoteOkItem(item: RemoteOkItem, resumeKeywords: string[]): boolean {
   return Boolean(item.id && item.position && item.company) && isRelevantRole(item.position ?? "", item.tags ?? [], resumeKeywords);
 }
@@ -282,12 +505,14 @@ function extractApplicationEmail(text: string): string | null {
 }
 
 function stripHtml(value: string): string {
-  return value
+  return decodeHtmlEntities(value)
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
     .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function decodeHtmlEntities(value: string): string {
+  return value.replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&quot;/gi, "\"").replace(/&#39;|&apos;/gi, "'").replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&");
 }
