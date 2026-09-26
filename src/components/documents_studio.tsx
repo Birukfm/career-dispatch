@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy, Download, Eraser, FileCheck, FileText, Mail, PencilLine, ShieldCheck, Sparkles } from "lucide-react";
+import { BookMarked, Check, Copy, Download, Eraser, FileCheck, FileText, Mail, PencilLine, ShieldCheck, Sparkles } from "lucide-react";
 import { useState, type ChangeEvent, type ReactNode } from "react";
 import type { DocumentKind, DocumentTemplate, DocumentTemplateLibrary } from "@/lib/document_templates";
 
@@ -14,6 +14,7 @@ export function DocumentsStudio({ library }: DocumentsStudioProps): ReactNode {
       <TailoringPolicy />
       <TemplateMaker kind="resume" title="Resume template maker" description="Choose a structure, edit every line, and download a version that reflects your own experience." templates={library.resumes} />
       <TemplateMaker kind="cover_letter" title="Cover-letter template maker" description="Start with a truthful framework, then replace the bracketed fields with details from the specific role." templates={library.coverLetters} />
+      <TemplateMaker kind="readme" title="README template maker" description="Start from a product, library, or portfolio README structure, then edit every section before you publish." templates={library.readmes} />
     </>
   );
 }
@@ -27,7 +28,7 @@ function TailoringPolicy(): ReactNode {
       </div>
       <div className="policy-principles">
         <article><FileCheck size={18} /><div><strong>Facts stay unchanged</strong><span>Employment, education, skills, dates, and achievements remain based on your information.</span></div></article>
-        <article><PencilLine size={18} /><div><strong>Always open to edit</strong><span>Every generated resume and letter is a starting point you can review and rewrite.</span></div></article>
+        <article><PencilLine size={18} /><div><strong>Always open to edit</strong><span>Every generated resume, letter, and README is a starting point you can review and rewrite.</span></div></article>
         <article><ShieldCheck size={18} /><div><strong>No invented claims</strong><span>The cleanup process must not manufacture metrics, credentials, responsibilities, or experience.</span></div></article>
       </div>
     </section>
@@ -46,6 +47,7 @@ function TemplateMaker({ kind, title, description, templates }: TemplateMakerPro
   const [content, setContent] = useState<string>(templates[0]?.content ?? "");
   const [copied, setCopied] = useState<boolean>(false);
   const selectedTemplate: DocumentTemplate = templates.find((template: DocumentTemplate): boolean => template.id === selectedTemplateId) ?? templates[0];
+  const meta: TemplateKindMeta = createTemplateKindMeta(kind);
   function selectTemplate(template: DocumentTemplate): void {
     setSelectedTemplateId(template.id);
     setContent(template.content);
@@ -57,19 +59,19 @@ function TemplateMaker({ kind, title, description, templates }: TemplateMakerPro
     window.setTimeout((): void => setCopied(false), 1800);
   }
   function downloadDocument(): void {
-    const blob: Blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const blob: Blob = new Blob([content], { type: meta.mimeType });
     const url: string = URL.createObjectURL(blob);
     const link: HTMLAnchorElement = document.createElement("a");
     link.href = url;
-    link.download = `${kind === "resume" ? "resume" : "cover_letter"}_${selectedTemplate.id}.txt`;
+    link.download = `${meta.filePrefix}_${selectedTemplate.id}.${meta.extension}`;
     link.click();
     URL.revokeObjectURL(url);
   }
   return (
-    <section className="template-maker" id={kind === "resume" ? "resume-templates" : "cover-letter-templates"}>
+    <section className="template-maker" id={meta.sectionId}>
       <div className="template-section-heading">
-        <div className={`template-type-icon ${kind}`} >{kind === "resume" ? <FileText size={20} /> : <Mail size={20} />}</div>
-        <div><p className="eyebrow">{kind === "resume" ? "Resume templates" : "Cover-letter templates"}</p><h2>{title}</h2><p>{description}</p></div>
+        <div className={`template-type-icon ${kind}`}>{meta.icon}</div>
+        <div><p className="eyebrow">{meta.eyebrow}</p><h2>{title}</h2><p>{description}</p></div>
       </div>
       <div className="template-options">
         {templates.map((template: DocumentTemplate): ReactNode => (
@@ -93,4 +95,44 @@ function TemplateMaker({ kind, title, description, templates }: TemplateMakerPro
       </div>
     </section>
   );
+}
+
+interface TemplateKindMeta {
+  eyebrow: string;
+  sectionId: string;
+  filePrefix: string;
+  extension: string;
+  mimeType: string;
+  icon: ReactNode;
+}
+
+function createTemplateKindMeta(kind: DocumentKind): TemplateKindMeta {
+  if (kind === "resume") {
+    return {
+      eyebrow: "Resume templates",
+      sectionId: "resume-templates",
+      filePrefix: "resume",
+      extension: "txt",
+      mimeType: "text/plain;charset=utf-8",
+      icon: <FileText size={20} />,
+    };
+  }
+  if (kind === "cover_letter") {
+    return {
+      eyebrow: "Cover-letter templates",
+      sectionId: "cover-letter-templates",
+      filePrefix: "cover_letter",
+      extension: "txt",
+      mimeType: "text/plain;charset=utf-8",
+      icon: <Mail size={20} />,
+    };
+  }
+  return {
+    eyebrow: "README templates",
+    sectionId: "readme-templates",
+    filePrefix: "README",
+    extension: "md",
+    mimeType: "text/markdown;charset=utf-8",
+    icon: <BookMarked size={20} />,
+  };
 }

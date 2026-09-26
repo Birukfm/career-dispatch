@@ -11,7 +11,7 @@ export default function DocumentsPage(): ReactNode {
       <Sidebar activeSection="documents" />
       <section className="workspace documents-workspace">
         <header className="page-header documents-header">
-          <div><p className="dateline">Document studio</p><h1>Make every word yours.</h1><p>Clean, truthful templates designed to be edited before they are sent.</p></div>
+          <div><p className="dateline">Document studio</p><h1>Make every word yours.</h1><p>Clean, truthful templates for resumes, cover letters, and README files—designed to be edited before they are sent or published.</p></div>
           <a className="back-link" href="/">Return to dispatch</a>
         </header>
         <DocumentsStudio library={library} />

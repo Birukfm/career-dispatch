@@ -1146,6 +1146,10 @@ select:focus-visible {
   background: var(--signal);
 }
 
+.template-type-icon.readme {
+  background: var(--sage);
+}
+
 .template-options {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
